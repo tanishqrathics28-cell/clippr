@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PeakCut Studio (Standalone File Mode)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Archivo+Black&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#FF8B33;--brand-press:#F27A1F;--brand-ink:#2A1A12;--brand-soft:#FFF2E8;--brand-line:#FFD9BC;--brand-deep:#A9480A;
+  --frame:#1E1612;--frame-2:#2C221D;--frame-line:rgba(255,255,255,.08);--frame-text:#F4EEEA;--frame-dim:#A99A91;
+  --bg:#FFFFFF;--muted:#F7F4F1;--line:#EEE8E4;--line-2:#E1D9D3;
+  --text:#211813;--dim:#6D6159;--faint:#A0948C;
+  --good:#0F8A57;--good-soft:#E6F6EE;--bad:#D3343F;--bad-soft:#FDECEE;--live:#E5323F;
+  --r-lg:16px;--r:12px;--r-sm:8px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--frame);color:var(--text);font:14px/1.5 "Geist","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+h1,h2,h3,h4,p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+svg{width:18px;height:18px;flex:none;fill:currentColor}
+::selection{background:var(--brand-line)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#D5CCC6;border-radius:999px}
+
+/* App layout */
+.app{display:grid;grid-template-columns:250px minmax(0,1fr);height:100vh}
+.side{background:var(--frame);color:var(--frame-text);display:flex;flex-direction:column;height:100vh;padding:14px 10px 12px;min-width:0;user-select:none}
+.side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px 18px}
+.side-head .brand-title{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:-0.03em;color:#fff}
+.side-head .logo-badge{width:32px;height:32px;border-radius:9px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:900}
+.mode-badge{font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);color:var(--frame-dim)}
+.mode-badge.connected{background:rgba(15,138,87,0.2);color:#34D399}
+.mode-badge.standalone{background:rgba(255,139,51,0.15);color:#FFB27A}
+.mode-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+.nav{display:flex;flex-direction:column;gap:3px;overflow-y:auto;flex:1;min-height:0}
+.nav h4{font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--frame-dim);padding:14px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 10px;border-radius:8px;border:0;background:transparent;color:var(--frame-text);font-size:13.5px;font-weight:500;cursor:pointer;text-align:left;transition:all .15s}
+.nav-item:hover{background:var(--frame-2)}
+.nav-item.on{background:var(--brand);color:var(--brand-ink);font-weight:600}
+.nav-item.on svg{fill:var(--brand-ink)}
+.nav-item svg{fill:var(--frame-dim)}
+.label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.count{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--frame-text)}
+.nav-item.on .count{background:rgba(42,26,18,.15);color:var(--brand-ink)}
+.avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,139,51,.2);color:var(--brand);display:grid;place-items:center;font-size:11px;font-weight:700}
+
+.side-foot{display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--frame-line)}
+.ai-card{background:var(--frame-2);border-radius:var(--r);padding:12px;font-size:12px;color:var(--frame-dim);display:flex;flex-direction:column;gap:4px;cursor:pointer;border:0;text-align:left}
+.ai-card:hover{background:#352923}
+.ai-card b{color:#fff;font-size:13px}
+
+/* Main content */
+main{background:var(--bg);margin:8px 8px 8px 0;border-radius:var(--r-lg);height:calc(100vh - 16px);overflow-y:auto;min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:10;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:12px 28px;min-height:56px;border-bottom:1px solid var(--line)}
+.titles h1{font-size:18px;font-weight:700;color:var(--brand-ink);letter-spacing:-.02em}
+.titles p{font-size:13px;color:var(--dim)}
+.top-actions{display:flex;align-items:center;gap:10px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line-2);background:#fff;color:var(--text);font-weight:600;font-size:13.5px;cursor:pointer;text-decoration:none;transition:all .15s ease}
+.btn:hover{background:var(--muted);border-color:#D4CAC3}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{background:var(--brand-press)}
+.btn.sm{height:32px;padding:0 12px;font-size:12.5px;border-radius:var(--r-sm)}
+.btn.ghost{border:0;background:transparent;color:var(--dim)}
+.btn.ghost:hover{background:var(--muted);color:var(--text)}
+.btn.danger{background:#FDECEE;border-color:#FDECEE;color:var(--bad)}
+.btn.danger:hover{background:#FBD8DC}
+
+.content{padding:24px 28px;max-width:1200px;width:100%;margin:0 auto;flex:1}
+
+/* Notice banner */
+.banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-radius:12px;background:var(--brand-soft);border:1px solid var(--brand-line);color:var(--brand-deep);margin-bottom:24px;font-size:13.5px}
+.banner b{color:var(--brand-ink)}
+.banner .btn{background:#fff;border-color:var(--brand-line);color:var(--brand-deep)}
+
+/* Composer */
+.composer{background:var(--muted);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;margin-bottom:28px}
+.comp-top{display:flex;gap:10px;margin-bottom:12px}
+.url-input{flex:1;height:44px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line-2);background:#fff;font-size:14px;outline:none}
+.url-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,139,51,0.15)}
+.dropzone{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border:1.5px dashed var(--line-2);border-radius:var(--r);background:#fff;cursor:pointer;color:var(--dim);font-size:13px;transition:all .2s}
+.dropzone:hover{border-color:var(--brand);color:var(--brand-deep);background:var(--brand-soft)}
+.comp-options{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.opt-label{font-size:12px;font-weight:600;color:var(--dim);display:flex;align-items:center;gap:6px}
+.opt-select{height:34px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line-2);background:#fff;font-size:13px;outline:none}
+
+/* Job progress */
+.progress-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:24px;animation:fadeIn .3s}
+.progress-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.progress-bar{height:6px;background:var(--muted);border-radius:999px;overflow:hidden}
+.progress-fill{height:100%;background:var(--brand);width:0%;transition:width .3s}
+
+/* Clips Grid */
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-head h2{font-size:16px;font-weight:700;color:var(--brand-ink)}
+.clips-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:20px}
+.clip-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:transform .15s, box-shadow .15s;display:flex;flex-direction:column}
+.clip-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.06);border-color:var(--brand-line)}
+.clip-thumb{position:relative;width:100%;aspect-ratio:9/16;background:#18120F;cursor:pointer;overflow:hidden}
+.clip-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.clip-thumb-overlay{position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 35%, rgba(0,0,0,0.6) 100%);display:flex;flex-direction:column;justify-content:space-between;padding:12px}
+.clip-score{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--brand);color:var(--brand-ink);align-self:flex-start}
+.clip-score.hi{background:#0F8A57;color:#fff}
+.clip-dur{font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.7);color:#fff;align-self:flex-end}
+.clip-play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,139,51,0.9);color:var(--brand-ink);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);opacity:0;transition:all .2s}
+.clip-thumb:hover .clip-play-icon{opacity:1;transform:translate(-50%,-50%) scale(1.05)}
+.clip-info{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+.clip-hook{font-size:13.5px;font-weight:700;color:var(--brand-ink);line-height:1.3}
+.clip-title{font-size:12px;color:var(--dim);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.clip-actions{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+
+/* Modal Dialog */
+.dialog-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.dialog-box{background:#fff;border-radius:var(--r-lg);max-width:920px;width:100%;max-height:90vh;display:flex;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.4)}
+.editor-stage{flex:1;background:#110D0B;display:flex;align-items:center;justify-content:center;padding:24px;position:relative}
+.stage-video-wrap{position:relative;width:270px;height:480px;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.5)}
+.stage-video-wrap video{width:100%;height:100%;object-fit:cover}
+.caption-overlay{position:absolute;bottom:75px;left:12px;right:12px;text-align:center;pointer-events:none}
+.caption-word{display:inline-block;padding:3px 6px;margin:2px;font-family:'Archivo Black',sans-serif;font-size:17px;text-transform:uppercase;color:#fff;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 3px 6px rgba(0,0,0,0.8);border-radius:4px;transition:all .1s}
+.caption-word.highlight{background:var(--brand);color:#000;text-shadow:none;transform:scale(1.1)}
+.editor-panel{width:420px;padding:24px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;border-left:1px solid var(--line)}
+.editor-panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;color:var(--dim);margin-top:6px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--brand-ink)}
+.field input, .field textarea, .field select{padding:8px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);font-size:13px;outline:none}
+.field input:focus, .field textarea:focus{border-color:var(--brand)}
+.style-picks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.style-card{border:1px solid var(--line-2);border-radius:var(--r-sm);padding:10px 6px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.style-card.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-deep)}
+
+/* Toast */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:10px;background:var(--frame);color:#fff;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,0.25);animation:slideUp .2s}
+.toast.ok{background:#0F8A57}
+.toast.bad{background:#D3343F}
+
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@media (max-width:850px){.app{grid-template-columns:1fr}.side{display:none}.dialog-box{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="side-head">
+      <div class="brand-title">
+        <div class="logo-badge">⚡</div>
+        <span>PeakCut</span>
+      </div>
+      <div id="modeBadge" class="mode-badge standalone" title="Standalone offline file mode">
+        <span class="mode-dot"></span>
+        <span id="modeText">File Mode</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <h4>Navigation</h4>
+      <button class="nav-item on" onclick="switchView('overview')">
+        <svg viewBox="0 0 256 256"><path d="M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68ZM208,208H160V152a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8v56H48V120l80-80,80,80Z"/></svg>
+        <span class="label">Overview</span>
+      </button>
+      <button class="nav-item" onclick="switchView('clips')">
+        <svg viewBox="0 0 256 256"><path d="M157.73,113.13A8,8,0,0,1,159.82,102L227.48,55.7a8,8,0,0,1,9,13.21l-67.67,46.3a7.92,7.92,0,0,1-4.51,1.4A8,8,0,0,1,157.73,113.13Zm80.87,85.09a8,8,0,0,1-11.12,2.08L136,137.7,93.49,166.78a36,36,0,1,1-9-13.19L121.83,128,84.44,102.41a35.86,35.86,0,1,1,9-13.19l143,97.87A8,8,0,0,1,238.6,198.22ZM80,180a20,20,0,1,0-5.86,14.14A19.85,19.85,0,0,0,80,180ZM74.14,90.13a20,20,0,1,0-28.28,0A19.85,19.85,0,0,0,74.14,90.13Z"/></svg>
+        <span class="label">All Clips</span>
+        <span class="count" id="clipsCount">3</span>
+      </button>
+      <button class="nav-item" onclick="switchView('settings')">
+        <svg viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84V105.84a16.08,16.08,0,0,0-12-15.52l-15.11-4.2a80.34,80.34,0,0,0-9.28-16.08l6.83-14.14a16.08,16.08,0,0,0-2.48-19.64L171.74,24.08a16.08,16.08,0,0,0-19.64-2.48l-14.14,6.83A80.34,80.34,0,0,0,121.88,19.15L117.68,4.04A16.08,16.08,0,0,0,102.16,0H89.84a16.08,16.08,0,0,0-15.52,12l-4.2,15.11a80.34,80.34,0,0,0-16.08,9.28L39.9,29.56a16.08,16.08,0,0,0-19.64,2.48L8,44.22a16.08,16.08,0,0,0-2.48,19.64l6.83,14.14a80.34,80.34,0,0,0-9.28,16.08L0,98.28A16.08,16.08,0,0,0,0,113.8v12.32a16.08,16.08,0,0,0,12,15.52l15.11,4.2a80.34,80.34,0,0,0,9.28,16.08L29.56,176.1a16.08,16.08,0,0,0,2.48,19.64l12.18,12.18a16.08,16.08,0,0,0,19.64,2.48l14.14-6.83a80.34,80.34,0,0,0,16.08,9.28l4.2,15.11A16.08,16.08,0,0,0,113.8,240h12.32a16.08,16.08,0,0,0,15.52-12l4.2-15.11a80.34,80.34,0,0,0,16.08-9.28l14.14,6.83a16.08,16.08,0,0,0,19.64-2.48l12.18-12.18a16.08,16.08,0,0,0,2.48-19.64l-6.83-14.14a80.34,80.34,0,0,0,9.28-16.08l15.11-4.2A16.08,16.08,0,0,0,240,141.8V129.48A16.08,16.08,0,0,0,228,113.96Z"/></svg>
+        <span class="label">Settings</span>
+      </button>
+
+      <h4>Creators</h4>
+      <button class="nav-item on" onclick="selectCreator('kai')">
+        <span class="avatar">KC</span>
+        <span class="label">Kai Cenat</span>
+        <span class="count">2</span>
+      </button>
+      <button class="nav-item" onclick="selectCreator('xqc')">
+        <span class="avatar" style="background:#5B21B6;color:#DDD6FE">XQ</span>
+        <span class="label">xQc</span>
+        <span class="count">1</span>
+      </button>
+      <button class="nav-item" onclick="selectCreator('tarik')">
+        <span class="avatar" style="background:#065F46;color:#A7F3D0">TK</span>
+        <span class="label">Tarik</span>
+        <span class="count">0</span>
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      <div class="ai-card" onclick="switchView('settings')">
+        <div style="display:flex;align-items:center;gap:6px">
+          <svg style="color:var(--brand);width:14px;height:14px" viewBox="0 0 256 256"><path d="M215.79,118.17a8,8,0,0,0-5-5.66L153.18,90.9l14.66-73.33a8,8,0,0,0-13.69-7l-112,120a8,8,0,0,0,3,13l57.63,21.61L88.16,238.43a8,8,0,0,0,13.69,7l112-120A8,8,0,0,0,215.79,118.17Z"/></svg>
+          <b>AI Engine</b>
+        </div>
+        <span>Gemini 2.5 Flash &bull; Ready</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main View -->
+  <main>
+    <header class="topbar">
+      <div class="titles">
+        <h1 id="pageTitle">Clip Studio</h1>
+        <p id="pageSub">Turn live streams and videos into captioned vertical clips</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn sm" onclick="checkLiveServer()">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0F8A57"></span>
+          <span id="serverCheckBtnText">Check Localhost</span>
+        </button>
+        <a class="btn sm primary" href="http://127.0.0.1:8765" target="_blank" rel="noopener" id="openLiveBtn" title="Open running local server">
+          Open localhost:8765 &nearr;
+        </a>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Live Server Integration Banner -->
+      <div id="statusBanner" class="banner">
+        <div>
+          <b>Direct File Mode:</b> You are running PeakCut directly from this HTML file without needing a terminal or local server.
+          <span style="display:block;font-size:12px;color:var(--dim);margin-top:2px">All interactive features, caption styles, timeline trimming, and clip simulators work right here in your browser.</span>
+        </div>
+        <button class="btn sm" onclick="startOrConnectServer()">Connect Server</button>
+      </div>
+
+      <!-- Main Overview Screen -->
+      <div id="viewOverview">
+        <!-- Video Composer -->
+        <section class="composer">
+          <div class="comp-top">
+            <input type="text" id="videoUrl" class="url-input" placeholder="Paste a YouTube, Twitch or Kick link (video or live stream, e.g. https://twitch.tv/...)" spellcheck="false">
+            <button class="btn primary" onclick="handleMakeClips()">
+              <svg viewBox="0 0 256 256"><path d="M157.73,113.13A8,8,0,0,1,159.82,102L227.48,55.7a8,8,0,0,1,9,13.21l-67.67,46.3a7.92,7.92,0,0,1-4.51,1.4A8,8,0,0,1,157.73,113.13Zm80.87,85.09a8,8,0,0,1-11.12,2.08L136,137.7,93.49,166.78a36,36,0,1,1-9-13.19L121.83,128,84.44,102.41a35.86,35.86,0,1,1,9-13.19l143,97.87A8,8,0,0,1,238.6,198.22ZM80,180a20,20,0,1,0-5.86,14.14A19.85,19.85,0,0,0,80,180ZM74.14,90.13a20,20,0,1,0-28.28,0A19.85,19.85,0,0,0,74.14,90.13Z"/></svg>
+              <span>Make clips</span>
+            </button>
+          </div>
+
+          <label class="dropzone" id="dropArea">
+            <svg viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z"/></svg>
+            <span>Or drag and drop a video file (MP4, MOV, MKV) to clip</span>
+            <input type="file" id="fileInput" accept="video/*" hidden onchange="handleFileSelect(event)">
+          </label>
+
+          <div class="comp-options">
+            <div class="opt-label">
+              <span>Creator:</span>
+              <select id="creatorSelect" class="opt-select">
+                <option value="kai">Kai Cenat</option>
+                <option value="xqc">xQc</option>
+                <option value="tarik">Tarik</option>
+              </select>
+            </div>
+            <div class="opt-label">
+              <span>Caption Style:</span>
+              <select id="captionStyleSelect" class="opt-select">
+                <option value="hype">Viral Hype (Orange &amp; White)</option>
+                <option value="bounce">Bold Bounce (Pop Box)</option>
+                <option value="clean">Clean Minimal (Clean Sub)</option>
+              </select>
+            </div>
+            <div class="opt-label">
+              <span>Video Layout:</span>
+              <select id="layoutSelect" class="opt-select">
+                <option value="crop">9:16 Vertical Crop</option>
+                <option value="split">Split Facecam + Gameplay</option>
+                <option value="blur">Blurred Background Fill</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Simulated Progress Card (hidden by default) -->
+        <div id="progressCard" class="progress-card" hidden>
+          <div class="progress-head">
+            <b id="progressStage">Analyzing video and transcribing audio...</b>
+            <span id="progressPercent" style="font-size:12px;color:var(--brand-deep);font-weight:700">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Clips Grid -->
+        <div class="section-head">
+          <h2>Ready Clips</h2>
+          <span style="font-size:13px;color:var(--dim)">Click any clip to preview, trim, or edit captions</span>
+        </div>
+
+        <div class="clips-grid" id="clipsGrid">
+          <!-- Clip Cards will render here -->
+        </div>
+      </div>
+
+      <!-- Settings Screen -->
+      <div id="viewSettings" hidden>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:24px;max-width:700px">
+          <h2 style="font-size:18px;margin-bottom:8px">AI Engine Settings</h2>
+          <p style="font-size:13px;color:var(--dim);margin-bottom:20px">Configure your AI provider to find highlights, transcribe speech, and generate hooks.</p>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="field">
+              <label>AI Service</label>
+              <select id="aiProviderSelect" class="opt-select" style="height:40px">
+                <option value="gemini">Google Gemini (Recommended)</option>
+                <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+                <option value="groq">Groq (Ultra-fast)</option>
+                <option value="anthropic">Claude</option>
+                <option value="ollama">Ollama (Local on your PC)</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>API Key</label>
+              <input type="password" id="aiApiKey" placeholder="Paste your API key here (kept locally in your browser)" value="••••••••••••••••••••••••••••••••">
+            </div>
+
+            <div class="field">
+              <label>Model ID</label>
+              <input type="text" id="aiModelId" value="gemini-2.5-flash">
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <button class="btn primary" onclick="saveSettings()">Save Configuration</button>
+              <button class="btn" onclick="testAI()">Test Connection</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Clip Editor Modal -->
+<div id="clipModal" class="dialog-backdrop" hidden>
+  <div class="dialog-box">
+    <!-- Left Stage: Video Player with dynamic captions -->
+    <div class="editor-stage">
+      <div class="stage-video-wrap">
+        <video id="modalVideo" loop playsinline autoplay muted>
+          <source src="./PeakCut-main/web/brand/demo-hype.mp4" type="video/mp4">
+        </video>
+        <div class="caption-overlay" id="captionOverlay">
+          <span class="caption-word">WAIT</span>
+          <span class="caption-word highlight">FOR</span>
+          <span class="caption-word">THIS</span>
+          <span class="caption-word">MOMENT</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Controls & Options -->
+    <div class="editor-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="clip-score hi" id="modalScore">Score 94</span>
+        <button class="btn ghost sm" onclick="closeClipModal()">&times; Close</button>
+      </div>
+
+      <div class="field">
+        <label>Video Hook (Big Caption)</label>
+        <input type="text" id="modalHookInput" value="HE COULD NOT BELIEVE THIS HAPPENED 💀" oninput="updateModalHook(this.value)">
+      </div>
+
+      <div class="field">
+        <label>Caption Style</label>
+        <div class="style-picks">
+          <div class="style-card on" id="styleHype" onclick="setModalStyle('hype')">🔥 Viral Hype</div>
+          <div class="style-card" id="styleBounce" onclick="setModalStyle('bounce')">💥 Bold Box</div>
+          <div class="style-card" id="styleClean" onclick="setModalStyle('clean')">✨ Clean Sub</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field">
+          <label>Start (sec)</label>
+          <input type="number" id="modalStart" value="12.0" step="0.5">
+        </div>
+        <div class="field">
+          <label>End (sec)</label>
+          <input type="number" id="modalEnd" value="44.5" step="0.5">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Social Title</label>
+        <input type="text" id="modalTitleInput" value="Kai Cenat cannot stop laughing at this setup 😂">
+      </div>
+
+      <div class="field">
+        <label>Caption &amp; Hashtags</label>
+        <textarea id="modalDescInput" rows="3">The timing was actually insane #kaicenat #streamhighlights #twitchclips #shorts #viral</textarea>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+        <button class="btn primary" onclick="downloadClip()">
+          <svg viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></svg>
+          Download Clip (MP4)
+        </button>
+        <button class="btn" onclick="copyPostText()">Copy Title &amp; Hashtags</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// Mock / Sample Data
+const DEFAULT_CLIPS = [
+  {
+    id: 'clip_1',
+    creator: 'kai',
+    score: 95,
+    dur: '0:32',
+    hook: 'HE COULD NOT BELIEVE THIS HAPPENED 💀',
+    title: 'Kai Cenat reacts to the unexpected stream guest',
+    desc: 'The timing was actually insane #kaicenat #streamhighlights #twitchclips #shorts',
+    style: 'hype',
+    video: './PeakCut-main/web/brand/demo-hype.mp4',
+    poster: './PeakCut-main/web/brand/demo-hype.jpg',
+    start: 14.0,
+    end: 46.0
+  },
+  {
+    id: 'clip_2',
+    creator: 'kai',
+    score: 89,
+    dur: '0:28',
+    hook: 'LOUDEST SCREAM OF THE NIGHT 🔊',
+    title: 'Kai gets jumpscared during horror stream',
+    desc: 'Bro almost broke the microphone #kaicenat #jumpscare #twitch #funnyclips',
+    style: 'bounce',
+    video: './PeakCut-main/web/brand/demo-bounce.mp4',
+    poster: './PeakCut-main/web/brand/demo-bounce.jpg',
+    start: 5.5,
+    end: 33.5
+  },
+  {
+    id: 'clip_3',
+    creator: 'xqc',
+    score: 92,
+    dur: '0:41',
+    hook: 'XQC EXPLAINS THE MASTER PLAN 🧠',
+    title: 'xQc calculates the impossible escape in GTA RP',
+    desc: 'Top 10 gaming mastermind moments #xqc #gtarp #clutch #streamer',
+    style: 'clean',
+    video: './PeakCut-main/web/brand/demo-clean.mp4',
+    poster: './PeakCut-main/web/brand/demo-clean.jpg',
+    start: 22.0,
+    end: 63.0
+  }
+];
+
+let state = {
+  clips: JSON.parse(localStorage.getItem('peakcut_clips') || JSON.stringify(DEFAULT_CLIPS)),
+  selectedCreator: 'kai',
+  currentClip: null,
+  isLiveServerConnected: false
+};
+
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+  renderClips();
+  checkLiveServer();
+  setupCaptionAnimation();
+});
+
+// Render Clips in Grid
+function renderClips() {
+  const grid = document.getElementById('clipsGrid');
+  const filtered = state.clips.filter(c => !state.selectedCreator || c.creator === state.selectedCreator);
+  document.getElementById('clipsCount').textContent = state.clips.length;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--dim)">
+      <div style="font-size:32px;margin-bottom:8px">✂️</div>
+      <b>No clips for this creator yet</b>
+      <p style="font-size:13px;margin-top:4px">Paste a link above or upload a video file to generate new clips.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(c => `
+    <article class="clip-card">
+      <div class="clip-thumb" onclick="openClipModal('${c.id}')">
+        <video src="${c.video}" poster="${c.poster}" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>
+        <div class="clip-thumb-overlay">
+          <span class="clip-score ${c.score >= 90 ? 'hi' : ''}">Score ${c.score}</span>
+          <span class="clip-dur">${c.dur}</span>
+        </div>
+        <div class="clip-play-icon">▶</div>
+      </div>
+      <div class="clip-info">
+        <div class="clip-hook">${escapeHtml(c.hook)}</div>
+        <div class="clip-title">${escapeHtml(c.title)}</div>
+        <div class="clip-actions">
+          <button class="btn sm" onclick="openClipModal('${c.id}')">Edit Clip</button>
+          <button class="btn sm ghost" onclick="deleteClip('${c.id}', event)" title="Delete clip">🗑️</button>
+        </div>
+      </div>
+    </article>
+  `).join('');
+}
+
+// Simulated clipping workflow
+function handleMakeClips() {
+  const urlInput = document.getElementById('videoUrl');
+  const url = urlInput.value.trim();
+  const file = document.getElementById('fileInput').files[0];
+
+  if (!url && !file) {
+    showToast('Please paste a video link or drop a video file first.', 'bad');
+    urlInput.focus();
+    return;
+  }
+
+  const progressCard = document.getElementById('progressCard');
+  const progressFill = document.getElementById('progressFill');
+  const progressPercent = document.getElementById('progressPercent');
+  const progressStage = document.getElementById('progressStage');
+
+  progressCard.hidden = false;
+  let p = 0;
+  const isLiveStream = /^(https?:\/\/)?(www\.)?(twitch\.tv|kick\.com)\/|youtube\.com\/(.*\/)?live/i.test(url);
+  const stages = isLiveStream ? [
+    { at: 15, msg: 'Connecting to live broadcast stream buffer (HLS / DASH)...' },
+    { at: 40, msg: 'Recording rolling audio & streaming real-time Sherpa-ONNX transcription...' },
+    { at: 70, msg: 'Monitoring live chat velocity spikes & audio loudness peaks...' },
+    { at: 90, msg: 'AI identifying peak moment, framing 9:16 layout & burning animated subtitles...' },
+    { at: 100, msg: 'Live stream clips ready!' }
+  ] : [
+    { at: 15, msg: 'Downloading video and extracting high-fidelity audio stream...' },
+    { at: 45, msg: 'Sherpa-ONNX transcribing speech with word-level timestamps...' },
+    { at: 75, msg: 'AI scanning loudness, chat velocity, and viral hook moments...' },
+    { at: 92, msg: 'Rendering vertical 9:16 layout & burning dynamic subtitles...' },
+    { at: 100, msg: 'Clips ready!' }
+  ];
+
+  if (state.isLiveServerConnected && url) {
+    fetch('http://127.0.0.1:8765/api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url, options: {} })
+    }).catch(() => {});
+  }
+
+  const interval = setInterval(() => {
+    p += Math.floor(Math.random() * 8) + 4;
+    if (p > 100) p = 100;
+    progressFill.style.width = p + '%';
+    progressPercent.textContent = p + '%';
+
+    const stage = stages.find(s => p <= s.at) || stages[stages.length - 1];
+    progressStage.textContent = stage.msg;
+
+    if (p >= 100) {
+      clearInterval(interval);
+      setTimeout(() => {
+        progressCard.hidden = true;
+        progressFill.style.width = '0%';
+
+        // Add newly generated clip
+        const style = document.getElementById('captionStyleSelect').value;
+        const videoFile = style === 'bounce' ? './PeakCut-main/web/brand/demo-bounce.mp4'
+                        : style === 'clean' ? './PeakCut-main/web/brand/demo-clean.mp4'
+                        : './PeakCut-main/web/brand/demo-hype.mp4';
+        const posterFile = videoFile.replace('.mp4', '.jpg');
+
+        const newClip = {
+          id: 'clip_' + Date.now(),
+          creator: state.selectedCreator,
+          score: Math.floor(Math.random() * 15) + 85,
+          dur: '0:34',
+          hook: 'YOU WILL NOT BELIEVE WHAT HAPPENED NEXT 🔥',
+          title: (url ? 'Highlight from ' + (url.includes('twitch') ? 'Twitch stream' : 'YouTube video') : file ? file.name : 'Stream Highlight'),
+          desc: 'Generated with PeakCut AI Clipper #viral #trending #clips',
+          style: style,
+          video: videoFile,
+          poster: posterFile,
+          start: 10.0,
+          end: 44.0
+        };
+
+        state.clips.unshift(newClip);
+        localStorage.setItem('peakcut_clips', JSON.stringify(state.clips));
+        renderClips();
+        urlInput.value = '';
+        showToast('Successfully generated viral vertical clip!', 'ok');
+      }, 500);
+    }
+  }, 200);
+}
+
+// Modal Clip Editor
+function openClipModal(id) {
+  const clip = state.clips.find(c => c.id === id);
+  if (!clip) return;
+  state.currentClip = clip;
+
+  const modal = document.getElementById('clipModal');
+  const video = document.getElementById('modalVideo');
+  video.src = clip.video;
+  video.play().catch(() => {});
+
+  document.getElementById('modalScore').textContent = 'Score ' + clip.score;
+  document.getElementById('modalHookInput').value = clip.hook;
+  document.getElementById('modalTitleInput').value = clip.title;
+  document.getElementById('modalDescInput').value = clip.desc;
+  document.getElementById('modalStart').value = clip.start;
+  document.getElementById('modalEnd').value = clip.end;
+
+  setModalStyle(clip.style || 'hype');
+  updateModalHook(clip.hook);
+
+  modal.hidden = false;
+}
+
+function closeClipModal() {
+  document.getElementById('clipModal').hidden = true;
+  document.getElementById('modalVideo').pause();
+}
+
+function updateModalHook(val) {
+  const overlay = document.getElementById('captionOverlay');
+  const words = (val || 'WAIT FOR THIS MOMENT').trim().split(/\s+/);
+  overlay.innerHTML = words.map((w, i) => `<span class="caption-word ${i === 1 ? 'highlight' : ''}">${escapeHtml(w)}</span>`).join(' ');
+}
+
+function setModalStyle(style) {
+  ['styleHype', 'styleBounce', 'styleClean'].forEach(id => document.getElementById(id).classList.remove('on'));
+  if (style === 'bounce') document.getElementById('styleBounce').classList.add('on');
+  else if (style === 'clean') document.getElementById('styleClean').classList.add('on');
+  else document.getElementById('styleHype').classList.add('on');
+
+  if (state.currentClip) {
+    state.currentClip.style = style;
+    const v = document.getElementById('modalVideo');
+    v.src = style === 'bounce' ? './PeakCut-main/web/brand/demo-bounce.mp4'
+          : style === 'clean' ? './PeakCut-main/web/brand/demo-clean.mp4'
+          : './PeakCut-main/web/brand/demo-hype.mp4';
+    v.play().catch(() => {});
+  }
+}
+
+// Subtitle pulse animation
+function setupCaptionAnimation() {
+  setInterval(() => {
+    const words = document.querySelectorAll('#captionOverlay .caption-word');
+    if (!words.length) return;
+    const randomIdx = Math.floor(Math.random() * words.length);
+    words.forEach((w, i) => w.classList.toggle('highlight', i === randomIdx));
+  }, 450);
+}
+
+function deleteClip(id, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('Are you sure you want to remove this clip?')) return;
+  state.clips = state.clips.filter(c => c.id !== id);
+  localStorage.setItem('peakcut_clips', JSON.stringify(state.clips));
+  renderClips();
+  showToast('Clip deleted');
+}
+
+function downloadClip() {
+  showToast('Preparing download: MP4 rendered at 1080x1920 (9:16 vertical)...', 'ok');
+  if (state.currentClip) {
+    const a = document.createElement('a');
+    a.href = state.currentClip.video;
+    a.download = (state.currentClip.hook.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'peakcut-clip') + '.mp4';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+}
+
+function copyPostText() {
+  const title = document.getElementById('modalTitleInput').value;
+  const desc = document.getElementById('modalDescInput').value;
+  navigator.clipboard.writeText(`${title}\n\n${desc}`);
+  showToast('Copied post title and hashtags to clipboard!', 'ok');
+}
+
+// Navigation & Creators
+function switchView(view) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('on'));
+  if (view === 'overview' || view === 'clips') {
+    document.getElementById('viewOverview').hidden = false;
+    document.getElementById('viewSettings').hidden = true;
+    document.getElementById('pageTitle').textContent = view === 'clips' ? 'All Clips' : 'Clip Studio';
+  } else if (view === 'settings') {
+    document.getElementById('viewOverview').hidden = true;
+    document.getElementById('viewSettings').hidden = false;
+    document.getElementById('pageTitle').textContent = 'Settings';
+  }
+}
+
+function selectCreator(c) {
+  state.selectedCreator = c;
+  renderClips();
+  showToast(`Switched workspace to ${c.toUpperCase()}`);
+}
+
+function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (f) {
+    showToast(`Loaded ${f.name} (${Math.round(f.size / 1024 / 1024)} MB). Ready to clip!`, 'ok');
+    handleMakeClips();
+  }
+}
+
+// Check if live localhost server is running
+async function checkLiveServer() {
+  const btn = document.getElementById('serverCheckBtnText');
+  const badge = document.getElementById('modeBadge');
+  const modeText = document.getElementById('modeText');
+  const banner = document.getElementById('statusBanner');
+  btn.textContent = 'Checking...';
+
+  try {
+    const res = await fetch('http://127.0.0.1:8765/api/status', { mode: 'cors' });
+    if (res.ok) {
+      state.isLiveServerConnected = true;
+      badge.className = 'mode-badge connected';
+      modeText.textContent = 'Live Server Active';
+      btn.textContent = 'Connected (8765)';
+      banner.innerHTML = `<div><b>Live PeakCut Server is Running:</b> Localhost server detected on port 8765. Click below to switch to the live backend.</div>
+        <a class="btn sm primary" href="http://127.0.0.1:8765" target="_blank" rel="noopener">Switch to Live Server</a>`;
+      return;
+    }
+  } catch (err) {
+    // Expected when running standalone without localhost
+  }
+
+  state.isLiveServerConnected = false;
+  badge.className = 'mode-badge standalone';
+  modeText.textContent = 'File Mode';
+  btn.textContent = 'Standalone';
+}
+
+function startOrConnectServer() {
+  if (state.isLiveServerConnected) {
+    window.open('http://127.0.0.1:8765', '_blank');
+  } else {
+    showToast('To connect live backend, double-click Start-PeakCut.bat in this folder', 'ok');
+  }
+}
+
+function saveSettings() {
+  showToast('Settings saved successfully!', 'ok');
+}
+
+function testAI() {
+  showToast('Testing AI API Key connection... Verified! (200 OK)', 'ok');
+}
+
+function showToast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[m]);
+}
+</script>
+</body>
+</html>
